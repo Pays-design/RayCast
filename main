@@ -1,0 +1,176 @@
+<!Doctype html>
+<html>
+<head>
+<title> Rays </title>
+  <script src="http://code.jquery.com/jquery-1.8.3.js"></script>
+</head>
+<body>
+<canvas id = "canv" width = 600 height = 400> </canvas>
+<script> 
+alert("Press enter to setup points and p to pause and start.");
+
+class Line
+{
+constructor(p1,p2,Direction) 
+{
+this.P1 = p1;
+this.P2 = p2;
+this.k = (p1.y - p2.y) / (p1.x - p2.x);
+this.b = p1.y - this.k * p1.x;
+this.direction = Direction;
+}
+}
+
+class Point 
+{
+constructor(x,y) 
+{
+this.x = x;
+this.y = y;
+}
+}
+
+var hero = 
+{
+x: 0,
+y: 0,
+radius: 2,
+}
+
+var OnPause = true;
+var IsBuildingALine = false;
+var IsChoosingPoint = false;
+var canvas = document.getElementById('canv');
+var ctx = canvas.getContext('2d');
+var xBuffer = 0;
+var yBuffer = 0;
+var lines = [];
+var rays = [new Line(new Point(hero.x,hero.y), new Point(hero.x + 1,hero.y + 1), false),new Line(new Point(hero.x,hero.y), new Point(hero.x + 1,hero.y + 1), true)];
+var HitsToDraw = [];
+
+function GetHitPoint(r) 
+{
+let pointsBuffer = [];
+for(let i = 0; i < lines.length; i++) 
+{
+let x = (lines[i].b - r.b) / (r.k - lines[i].k);
+if(Math.min(lines[i].P1.x,lines[i].P2.x) <= x && Math.max((lines[i].P1.x,lines[i].P2.x)) >= x) 
+{
+let y = r.k * x + r.b;
+if(r.direction == false && x < hero.x)
+pointsBuffer.push(new Point(x,y));
+if(r.direction == true && x > hero.x)
+pointsBuffer.push(new Point(x,y));
+}
+}
+ closestPoint = new Point(0,0);
+ console.log(pointsBuffer);
+for(let i = 0; i < pointsBuffer.length; i++) 
+{
+
+if(Math.sqrt( Math.pow(pointsBuffer[i].x - hero.x,2) + Math.pow(pointsBuffer[i].y - hero.y,2) ) < Math.sqrt( Math.pow(closestPoint.x - hero.x,2) + Math.pow(closestPoint.y - hero.y,2) ) || pointsBuffer.length == 1) 
+{
+closestPoint.x = pointsBuffer[i].x;
+closestPoint.y = pointsBuffer[i].y;
+}
+}
+return closestPoint;
+}
+
+function OnUpdate() 
+{
+
+if(!OnPause)
+{
+ctx.clearRect(0, 0, canvas.width, canvas.height);
+ctx.beginPath();
+ctx.arc(hero.x, hero.y, hero.radius, 0, 2 * Math.PI);
+ctx.stroke();
+for(let i = 0; i < lines.length; i++) 
+{
+ctx.beginPath();
+ctx.moveTo(lines[i].P1.x,lines[i].P1.y);
+ctx.lineTo(lines[i].P2.x,lines[i].P2.y);
+ctx.stroke();
+}
+
+for(let i = 0; i < HitsToDraw.length; i++) 
+{
+ctx.beginPath();
+ctx.moveTo(HitsToDraw[i].x,HitsToDraw[i].y);
+ctx.lineTo(hero.x,hero.y);
+ctx.stroke();
+}
+}
+}
+
+
+$( "body" ).keypress(function() {
+
+  if(event.which == 13 && OnPause) 
+  {
+  IsBuildingALine = !IsBuildingALine;
+  }
+  if(event.which == 112) 
+  {
+  OnPause = !OnPause;
+  }
+  if(!OnPause)
+  switch(event.which) 
+  {
+  case 119:
+  if(hero.y >0) hero.y--; ProcessRays();
+  break;
+  case 97:
+  if(hero.x > 0) hero.x--; ProcessRays();
+  break;
+  case 115:
+  if(hero.y < 400) hero.y++; ProcessRays();
+  break;
+  case 100:
+  if(hero.x < 600) hero.x++; ProcessRays();
+  break;
+  }
+
+}
+);
+
+function ProcessRays() 
+{
+rays = [new Line(new Point(hero.x,hero.y), new Point(hero.x + 1,hero.y + 1),false),new Line(new Point(hero.x,hero.y), new Point(hero.x + 1,hero.y + 1), true)];
+HitsToDraw = [];
+for(let i = 0; i < rays.length; i++) 
+{
+HitsToDraw.push(GetHitPoint(rays[i]));
+}
+}
+
+$( "canvas" ).click(function() {
+if(IsBuildingALine && OnPause)
+{
+  let x = event.pageX;
+  let y = event.pageY;
+  if(!IsChoosingPoint)
+  {
+  IsChoosingPoint = true;
+  ctx.fillRect(x,y,1,1);
+  xBuffer = x;
+  yBuffer = y;
+  }
+  else 
+  {
+  ctx.beginPath();
+  ctx.moveTo(xBuffer,yBuffer);
+  ctx.lineTo(x,y);
+  ctx.stroke();
+  IsChoosingPoint = false;
+  lines.push(new Line(new Point(xBuffer,yBuffer), new Point(x,y)));
+  console.log(lines);
+  } 
+  }
+});
+
+setInterval(OnUpdate, 16);
+</script>
+</body>
+</html>
