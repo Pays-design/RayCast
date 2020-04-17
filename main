@@ -45,36 +45,72 @@ var ctx = canvas.getContext('2d');
 var xBuffer = 0;
 var yBuffer = 0;
 var lines = [];
-var rays = [new Line(new Point(hero.x,hero.y), new Point(hero.x + 1,hero.y + 1), false),new Line(new Point(hero.x,hero.y), new Point(hero.x + 1,hero.y + 1), true)];
+var rays = [new Line(new Point(hero.x,hero.y), new Point(hero.x + 1,hero.y + 1), false),
+new Line(new Point(hero.x,hero.y), new Point(hero.x + 1,hero.y + 1), true),
+new Line(new Point(hero.x,hero.y), new Point(hero.x,hero.y - 1), false),
+new Line(new Point(hero.x,hero.y), new Point(hero.x,hero.y - 1), true)
+];
 var HitsToDraw = [];
+
 
 function GetHitPoint(r) 
 {
 let pointsBuffer = [];
 for(let i = 0; i < lines.length; i++) 
 {
-let x = (lines[i].b - r.b) / (r.k - lines[i].k);
-if(Math.min(lines[i].P1.x,lines[i].P2.x) <= x && Math.max((lines[i].P1.x,lines[i].P2.x)) >= x) 
+if(r.k != Infinity && r.k != 0)
 {
-let y = r.k * x + r.b;
-if(r.direction == false && x < hero.x)
+let x = (lines[i].b - r.b) / (r.k - lines[i].k);
+if(Math.min(lines[i].P1.x,lines[i].P2.x) <= x && Math.max(lines[i].P1.x,lines[i].P2.x) >= x)  
+{
+let y = lines[i].k * x + lines[i].b;
+if(r.direction == false && x <= hero.x)
 pointsBuffer.push(new Point(x,y));
-if(r.direction == true && x > hero.x)
+if(r.direction == true && x >= hero.x)
 pointsBuffer.push(new Point(x,y));
 }
 }
- closestPoint = new Point(0,0);
- console.log(pointsBuffer);
+else if(r.k == Infinity) 
+{
+let x = r.P1.x;
+let y = lines[i].k * x + lines[i].b;
+if(Math.min(lines[i].P1.x,lines[i].P2.x) <= x && Math.max(lines[i].P1.x,lines[i].P2.x) >= x) 
+{
+if(r.direction == false && y >= hero.y)
+pointsBuffer.push(new Point(x,y));
+if(r.direction == true && y <= hero.y)
+pointsBuffer.push(new Point(x,y));
+}
+}
+else if(r.k == 0)
+{
+let y = r.P1.y;
+let x = (y - lines[i].b) / lines[i].k;
+if(Math.min(lines[i].P1.x,lines[i].P2.x) <= x && Math.max(lines[i].P1.x,lines[i].P2.x) >= x) 
+{
+if(r.direction == false && x <= hero.x)
+pointsBuffer.push(new Point(x,y));
+if(r.direction == true && x >= hero.x)
+pointsBuffer.push(new Point(x,y));
+}
+continue;
+}
+}
+if(pointsBuffer.length > 0)
+{
+ closestPoint = pointsBuffer[0];
 for(let i = 0; i < pointsBuffer.length; i++) 
 {
 
-if(Math.sqrt( Math.pow(pointsBuffer[i].x - hero.x,2) + Math.pow(pointsBuffer[i].y - hero.y,2) ) < Math.sqrt( Math.pow(closestPoint.x - hero.x,2) + Math.pow(closestPoint.y - hero.y,2) ) || pointsBuffer.length == 1) 
+if(Math.sqrt( Math.pow(pointsBuffer[i].x - hero.x,2) + Math.pow(pointsBuffer[i].y - hero.y,2) ) < Math.sqrt( Math.pow(closestPoint.x - hero.x,2) + Math.pow(closestPoint.y - hero.y,2) )) 
 {
 closestPoint.x = pointsBuffer[i].x;
 closestPoint.y = pointsBuffer[i].y;
 }
 }
 return closestPoint;
+}
+return null;
 }
 
 function OnUpdate() 
@@ -133,15 +169,23 @@ $( "body" ).keypress(function() {
   }
 
 }
-);
+);;
 
 function ProcessRays() 
 {
-rays = [new Line(new Point(hero.x,hero.y), new Point(hero.x + 1,hero.y + 1),false),new Line(new Point(hero.x,hero.y), new Point(hero.x + 1,hero.y + 1), true)];
+rays = [new Line(new Point(hero.x,hero.y), new Point(hero.x + 1,hero.y + 1),false),
+new Line(new Point(hero.x,hero.y), new Point(hero.x + 1,hero.y + 1), true),
+new Line(new Point(hero.x,hero.y), new Point(hero.x,hero.y - 1), false),
+new Line(new Point(hero.x,hero.y), new Point(hero.x,hero.y - 1), true)
+];
+for(let j = 0; j < 500; j++)
+rays.push(new Line(new Point(hero.x,hero.y), new Point(hero.x + (Math.random() - 0.5) * 2 * j ,hero.y +  (Math.random() - 0.5) * 2 * j),  Math.random() >= 0.5));
 HitsToDraw = [];
 for(let i = 0; i < rays.length; i++) 
 {
-HitsToDraw.push(GetHitPoint(rays[i]));
+var point = GetHitPoint(rays[i])
+if(point != null)
+HitsToDraw.push(point);
 }
 }
 
