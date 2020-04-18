@@ -1,13 +1,19 @@
 <!Doctype html>
-<html>
-<head>
+<html><head>
 <title> Rays </title>
   <script src="http://code.jquery.com/jquery-1.8.3.js"></script>
 </head>
 <body>
-<canvas id = "canv" width = 600 height = 400> </canvas>
+<canvas id="canv" width="600" height="400" style="background-color: black"> </canvas>
 <script> 
-alert("Press enter to setup points and p to pause and start.");
+alert("Press enter to setup points and p to pause and start and press o to draw circles and press r to turn on randomize mode.");
+window.onload = init;
+function init() {
+	if (window.Event) {
+	document.captureEvents(Event.MOUSEMOVE);
+	}
+	document.onmousemove = getCursorXY;
+}
 
 class Line
 {
@@ -18,6 +24,16 @@ this.P2 = p2;
 this.k = (p1.y - p2.y) / (p1.x - p2.x);
 this.b = p1.y - this.k * p1.x;
 this.direction = Direction;
+}
+}
+
+class Circle 
+{
+constructor(Radius,x,y) 
+{
+this.x = x;
+this.radius = Radius;
+this.y = y;
 }
 }
 
@@ -37,6 +53,10 @@ y: 0,
 radius: 2,
 }
 
+function getCursorXY(e) {
+	userX = (window.Event) ? e.pageX : event.clientX + (document.documentElement.scrollLeft ? document.documentElement.scrollLeft : document.body.scrollLeft);
+	userY = (window.Event) ? e.pageY : event.clientY + (document.documentElement.scrollTop ? document.documentElement.scrollTop : document.body.scrollTop);
+}
 var OnPause = true;
 var IsBuildingALine = false;
 var IsChoosingPoint = false;
@@ -45,13 +65,14 @@ var ctx = canvas.getContext('2d');
 var xBuffer = 0;
 var yBuffer = 0;
 var lines = [];
-var rays = [new Line(new Point(hero.x,hero.y), new Point(hero.x + 1,hero.y + 1), false),
-new Line(new Point(hero.x,hero.y), new Point(hero.x + 1,hero.y + 1), true),
-new Line(new Point(hero.x,hero.y), new Point(hero.x,hero.y - 1), false),
-new Line(new Point(hero.x,hero.y), new Point(hero.x,hero.y - 1), true)
-];
+var rays = [];
 var HitsToDraw = [];
-
+var circles = [];
+var userX = 0;
+var userY = 0;
+var isRandomizing = false;
+ctx.strokeStyle = "white";
+ctx.strokeWidth = 5;
 
 function GetHitPoint(r) 
 {
@@ -91,9 +112,38 @@ if(Math.min(lines[i].P1.x,lines[i].P2.x) <= x && Math.max(lines[i].P1.x,lines[i]
 if(r.direction == false && x <= hero.x)
 pointsBuffer.push(new Point(x,y));
 if(r.direction == true && x >= hero.x)
-pointsBuffer.push(new Point(x,y));
+pointsBuffer.push(new Point(x,y));;
 }
 continue;
+}
+}
+if(r.k != 0 && r.k != Infinity && r.k != -Infinity)
+{
+for(let i = 0; i < circles.length; i++) 
+{
+let b = 2 * (r.k * r.b - circles[i].x - r.k * circles[i].y);
+let a = (r.k * r.k + 1);
+let c = Math.pow(circles[i].y,2) - Math.pow(circles[i].radius,2) + Math.pow(circles[i].x,2) - 2 * r.b * circles[i].y + r.b * r.b;
+let d = b * b - 4 * a * c;
+if(d > 0 ) 
+{
+let x1 = (Math.sqrt(d) - b) / (2 * a);
+let x2 = ((-1) * Math.sqrt(d) - b) / (2 * a);
+let y1 = r.k * x1 + r.b;
+let y2 = r.k * x2 + r.b;
+if((x1 >= hero.x && r.direction == true) || (x1 <= hero.x && r.direction == false))
+pointsBuffer.push(new Point(x1,y1));
+if((x2 >= hero.x && r.direction == true) || (x2 <= hero.x && r.direction == false))
+pointsBuffer.push(new Point(x2,y2));
+continue;
+}
+else if(d == 0) 
+{
+let x = (2 * (r.k * r.b - circles[i].x - r.k * circles[i].y)) / (2 * (r.k * r.k + 1));
+let y = r.k * x + r.b;
+pointsBuffer.push(new Point(x,y));
+}
+else if(d < 0) continue;
 }
 }
 if(pointsBuffer.length > 0)
@@ -118,7 +168,17 @@ function OnUpdate()
 
 if(!OnPause)
 {
-ctx.clearRect(0, 0, canvas.width, canvas.height);
+if(isRandomizing)
+{
+var ind = Math.floor(Math.random() * lines.length);
+var l = lines[Math.floor(Math.random() * lines.length)];
+var p1 = new Point(l.P1.x--, l.P1.y++);
+var p2 = new Point(l.P2.x++, l.P2.y--);
+var l1 = new Line(p1,p2);
+l.k = l1.k;
+l.b = l1.b;
+}
+ctx.clearRect(0, 0, canvas.width, canvas.height);;
 ctx.beginPath();
 ctx.arc(hero.x, hero.y, hero.radius, 0, 2 * Math.PI);
 ctx.stroke();
@@ -129,7 +189,12 @@ ctx.moveTo(lines[i].P1.x,lines[i].P1.y);
 ctx.lineTo(lines[i].P2.x,lines[i].P2.y);
 ctx.stroke();
 }
-
+for(let i = 0; i < circles.length; i++) 
+{
+ctx.beginPath();
+ctx.arc(circles[i].x,circles[i].y,circles[i].radius, 0, 2 * Math.PI);
+ctx.stroke();
+}
 for(let i = 0; i < HitsToDraw.length; i++) 
 {
 ctx.beginPath();
@@ -137,56 +202,70 @@ ctx.moveTo(HitsToDraw[i].x,HitsToDraw[i].y);
 ctx.lineTo(hero.x,hero.y);
 ctx.stroke();
 }
+angle = Math.acos((userX - hero.x) / Math.sqrt(Math.pow(userX - hero.x,2) + Math.pow(userY - hero.y,2))) * 180 / Math.PI;
+if(userY < hero.y)
+{
+angle = 360 - angle;
+}
+ProcessRays(angle - 60, angle + 60);
 }
 }
 
 
 $( "body" ).keypress(function() {
-
   if(event.which == 13 && OnPause) 
   {
   IsBuildingALine = !IsBuildingALine;
+  }
+  if(IsBuildingALine && event.which ==  111 && OnPause ) 
+  {
+  let c = new Circle(Math.floor(Math.random() * 10),userX,userY);
+  ctx.beginPath();
+  ctx.arc(c.x,c.y,c.radius, 0, 2 * Math.PI);
+  ctx.stroke();
+  circles.push(c);
   }
   if(event.which == 112) 
   {
   OnPause = !OnPause;
   }
-  if(!OnPause)
+  if(event.which == 114)
+  {
+  isRandomizing = !isRandomizing;
+  }
+  if(!OnPause) 
+  {
   switch(event.which) 
   {
   case 119:
-  if(hero.y >0) hero.y--; ProcessRays();
+  if(hero.y > 0) hero.y--;
   break;
   case 97:
-  if(hero.x > 0) hero.x--; ProcessRays();
+  if(hero.x > 0) hero.x--;
   break;
   case 115:
-  if(hero.y < 400) hero.y++; ProcessRays();
+  if(hero.y < 400) hero.y++;
   break;
   case 100:
-  if(hero.x < 600) hero.x++; ProcessRays();
+  if(hero.x < 600) hero.x++;
   break;
   }
-
 }
-);;
+}
+);
 
-function ProcessRays() 
+function ProcessRays(a1,a2) 
 {
-rays = [new Line(new Point(hero.x,hero.y), new Point(hero.x + 1,hero.y + 1),false),
-new Line(new Point(hero.x,hero.y), new Point(hero.x + 1,hero.y + 1), true),
-new Line(new Point(hero.x,hero.y), new Point(hero.x,hero.y - 1), false),
-new Line(new Point(hero.x,hero.y), new Point(hero.x,hero.y - 1), true)
-];
-for(let j = 0; j < 500; j++)
-rays.push(new Line(new Point(hero.x,hero.y), new Point(hero.x + (Math.random() - 0.5) * 2 * j ,hero.y +  (Math.random() - 0.5) * 2 * j),  Math.random() >= 0.5));
+rays = [];
+for(let j = a1; j < a2; j++)
+rays.push(new Line(new Point(hero.x,hero.y), new Point(hero.x - Math.cos(j*Math.PI/180) ,hero.y - Math.sin(j*Math.PI/180) ),  Math.sign(Math.cos(j*Math.PI/180)) > 0));
 HitsToDraw = [];
 for(let i = 0; i < rays.length; i++) 
 {
 var point = GetHitPoint(rays[i])
 if(point != null)
 HitsToDraw.push(point);
-}
+};
 }
 
 $( "canvas" ).click(function() {
@@ -216,5 +295,5 @@ if(IsBuildingALine && OnPause)
 
 setInterval(OnUpdate, 16);
 </script>
-</body>
-</html>
+
+</body></html>
